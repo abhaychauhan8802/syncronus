@@ -5,15 +5,42 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { handler } from "tailwindcss-animate";
+import { toast } from "sonner";
+import { apiClient } from "@/lib/api-client"  ;
+import { SIGNUP_ROUTE } from "@/utils/constants";
 
 const Auth = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
-  const handleLogin = () => {};
+  const validateSignup = () => {
+    if (!email) {
+      toast.error("Email is required.");
+      return false;
+    }
 
-  const handleSignup = () => {};
+    if (!password) {
+      toast.error("Password is required.");
+      return false;
+    }
+
+    if (password !== confirmPassword) {
+      toast.error("Passwords and confirm password should be same.");
+      return false;
+    }
+
+    return true;
+  };
+
+  const handleLogin = async () => {};
+
+  const handleSignup = async () => {
+    if (validateSignup()) {
+      const response = await apiClient.post(SIGNUP_ROUTE, { email, password });
+      console.log(response);
+    }
+  };
 
   return (
     <div className="h-screen w-screen flex items-center justify-center">
