@@ -4,15 +4,34 @@ import Victory from "@/assets/victory.svg";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { handler } from "tailwindcss-animate";
 import { toast } from "sonner";
-import { apiClient } from "@/lib/api-client"  ;
-import { SIGNUP_ROUTE } from "@/utils/constants";
+import { apiClient } from "@/lib/api-client";
+import { LOGIN_ROUTE, SIGNUP_ROUTE } from "@/utils/constants";
+import { useNavigate } from "react-router-dom";
+import { useAppStore } from "@/store";
 
 const Auth = () => {
+  const { setUserInfo } = useAppStore();
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+
+  const navigate = useNavigate();
+
+  const validateLogin = () => {
+    if (!email) {
+      toast.error("Email is required.");
+      return false;
+    }
+
+    if (!password) {
+      toast.error("Password is required.");
+      return false;
+    }
+
+    return true;
+  };
 
   const validateSignup = () => {
     if (!email) {
@@ -33,13 +52,45 @@ const Auth = () => {
     return true;
   };
 
-  const handleLogin = async () => {};
+  const handleLogin = async () => {
+    if (validateLogin()) {
+      const response = await apiClient.post(
+        LOGIN_ROUTE,
+        { email, password },
+        { withCredentials: true }
+      );
+
+      if (response.data.user.id) {
+        setUserInfo(response.data.user);
+        if (response.data.user.profileSetup) {
+          navigate("/chat");
+        } else {
+          navigate("/profile");
+        }
+      }
+      console.log(response);
+    }
+  };
 
   const handleSignup = async () => {
     if (validateSignup()) {
-      const response = await apiClient.post(SIGNUP_ROUTE, { email, password });
+      const response = await apiClient.post(
+        SIGNUP_ROUTE,
+        { email, password },
+        { withCredentials: true }
+      );
+      if (response.status === 201) {
+        setUserInfo(response.data.user);
+        navigate("/profile");
+      }
       console.log(response);
     }
+  };
+
+  const resetFields = () => {
+    setEmail("");
+    setPassword("");
+    setConfirmPassword("");
   };
 
   return (
@@ -56,66 +107,62 @@ const Auth = () => {
             </p>
           </div>
           <div className="flex items-center justify-center w-full">
-            <Tabs className="w-3/4" defaultValue="login">
+            <Tabs
+              className="w-3/4"
+              defaultValue="Login"
+              onValueChange={resetFields}
+            >
               <TabsList className="bg-transparent rounded-none w-full">
-                <TabsTrigger
-                  value="login"
-                  className="data-[state=active]:bg-transparent text-black text-opacity-90 border-b-2 rounded-none w-full data-[state=active]:text-black data-[state=active]:font-semibold data-[state=active]:border-b-purple-500 transition-all duration-300"
-                >
-                  Login
-                </TabsTrigger>
-                <TabsTrigger
-                  value="signup"
-                  className="data-[state=active]:bg-transparent text-black text-opacity-90 border-b-2 rounded-none w-full data-[state=active]:text-black data-[state=active]:font-semibold data-[state=active]:border-b-purple-500 transition-all duration-300"
-                >
-                  Sign Up
-                </TabsTrigger>
+                {["Login", "Signup"].map((tab, idx) => (
+                  <TabsTrigger
+                    value={tab}
+                    key={idx}
+                    className="data-[state=active]:bg-transparent text-black text-opacity-90 border-b-2 rounded-none w-full data-[state=active]:text-black data-[state=active]:font-semibold data-[state=active]:border-b-purple-500 transition-all duration-300"
+                  >
+                    {tab}
+                  </TabsTrigger>
+                ))}
               </TabsList>
-              <TabsContent value="login" className="flex flex-col gap-5 mt-10">
-                <Input
-                  placeholder="Email"
-                  value={email}
-                  type="email"
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="rounded-full p-6"
-                />
-                <Input
-                  placeholder="Password"
-                  value={password}
-                  type="password"
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="rounded-full p-6"
-                />
-                <Button className="rounded-full p-6" onClick={handleLogin}>
-                  Login
-                </Button>
-              </TabsContent>
-              <TabsContent value="signup" className="flex flex-col gap-5">
-                <Input
-                  placeholder="Email"
-                  value={email}
-                  type="email"
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="rounded-full p-6"
-                />
-                <Input
-                  placeholder="Password"
-                  value={password}
-                  type="password"
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="rounded-full p-6"
-                />
-                <Input
-                  placeholder="Confirm Password"
-                  value={confirmPassword}
-                  type="password"
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="rounded-full p-6"
-                />
-                <Button className="rounded-full p-6" onClick={handleSignup}>
-                  SignUp
-                </Button>
-              </TabsContent>
+
+              {["Login", "Signup"].map((tab, idx) => (
+                <TabsContent
+                  key={idx}
+                  value={tab}
+                  className={`flex flex-col gap-5 ${
+                    tab === "Login" && "mt-10"
+                  }`}
+                >
+                  <Input
+                    placeholder="Email"
+                    value={email}
+                    type="email"
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="rounded-full p-6"
+                  />
+                  <Input
+                    placeholder="Password"
+                    value={password}
+                    type="password"
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="rounded-full p-6"
+                  />
+                  {tab === "Signup" && (
+                    <Input
+                      placeholder="Confirm Password"
+                      value={confirmPassword}
+                      type="password"
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      className="rounded-full p-6"
+                    />
+                  )}
+                  <Button
+                    className="rounded-full p-6"
+                    onClick={tab === "Login" ? handleLogin : handleSignup}
+                  >
+                    {tab}
+                  </Button>
+                </TabsContent>
+              ))}
             </Tabs>
           </div>
         </div>
