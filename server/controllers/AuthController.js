@@ -12,7 +12,7 @@ const createToken = (email, userId) => {
   return token;
 };
 
-export const signup = async (req, res, next) => {
+export const signup = async (req, res) => {
   try {
     const { email, password } = req.body;
 
@@ -20,9 +20,9 @@ export const signup = async (req, res, next) => {
       return res.status(400).json({ error: "All fields are required" });
     }
 
-    const existingUser = await User.findOne({ email });
+    const userData = await User.findOne({ email });
 
-    if (existingUser) {
+    if (userData) {
       return res.status(400).json({ error: "User already exists" });
     }
 
@@ -47,7 +47,7 @@ export const signup = async (req, res, next) => {
   }
 };
 
-export const login = async (req, res, next) => {
+export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
@@ -55,43 +55,33 @@ export const login = async (req, res, next) => {
       return res.status(400).json({ error: "All fields are required" });
     }
 
-    const existingUser = await User.findOne({ email });
+    const userData = await User.findOne({ email });
 
-    if (!existingUser) {
+    if (!userData) {
       return res.status(404).json({ error: "User not exists" });
     }
 
-    const auth = await bcrypt.compare(password, existingUser.password);
+    const auth = await bcrypt.compare(password, userData.password);
 
     if (!auth) {
       return res.status(400).send("Password is incorrect.");
     }
 
-    res.cookie("jwt", createToken(email, existingUser._id), {
+    res.cookie("jwt", createToken(email, userData._id), {
       maxAge,
       secure: true,
       sameSite: "None",
     });
 
-    const {
-      id,
-      email: mail,
-      profileSetup,
-      firstName,
-      lastName,
-      image,
-      color,
-    } = existingUser;
-
     return res.status(200).json({
       user: {
-        id,
-        email: mail,
-        profileSetup,
-        firstName,
-        lastName,
-        image,
-        color,
+        id: userData.id,
+        email: userData.email,
+        profileSetup: userData.profileSetup,
+        firstName: userData.firstName,
+        lastName: userData.lastName,
+        image: userData.image,
+        color: userData.color,
       },
     });
   } catch (error) {
@@ -100,7 +90,7 @@ export const login = async (req, res, next) => {
   }
 };
 
-export const getUserInfo = async (req, res, next) => {
+export const getUserInfo = async (req, res) => {
   try {
     const { userId } = req;
 
@@ -110,31 +100,52 @@ export const getUserInfo = async (req, res, next) => {
       return res.status(404).json({ error: "User not found" });
     }
 
-
-
-    const {
-      id,
-      email,
-      profileSetup,
-      firstName,
-      lastName,
-      image,
-      color,
-    } = userData;
-
     return res.status(200).json({
       user: {
-        id,
-        email,
-        profileSetup,
-        firstName,
-        lastName,
-        image,
-        color,
+        id: userData.id,
+        email: userData.email,
+        profileSetup: userData.profileSetup,
+        firstName: userData.firstName,
+        lastName: userData.lastName,
+        image: userData.image,
+        color: userData.color,
       },
     });
   } catch (error) {
     console.log(error);
     return res.status(500).json({ error: error.message });
   }
-}
+};
+
+export const updateProfile = async (req, res) => {
+  try {
+    const { userId } = req;
+
+    const { firstName, lastName, color } = req.body;
+
+    if (!firstName || !lastName || !color) {
+      return res.status(400).json({ error: "All fields are required" });
+    }
+
+    const userData = await User.findByIdAndUpdate(
+      userId,
+      { firstName, lastName, color },
+      { new: true, runValidators: true }
+    );
+
+    return res.status(200).json({
+      user: {
+        id: userData.id,
+        email: userData.email,
+        profileSetup: userData.profileSetup,
+        firstName: userData.firstName,
+        lastName: userData.lastName,
+        image: userData.image,
+        color: userData.color,
+      },
+    });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({ error: error.message });
+  }
+};
