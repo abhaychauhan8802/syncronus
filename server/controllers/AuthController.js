@@ -1,6 +1,7 @@
 import bcrypt from "bcrypt";
 import User from "../models/UserModel.js";
 import jwt from "jsonwebtoken";
+import { renameSync, unlinkSync } from "node:fs";
 
 const maxAge = 3 * 24 * 60 * 60 * 1000;
 
@@ -123,13 +124,13 @@ export const updateProfile = async (req, res) => {
 
     const { firstName, lastName, color } = req.body;
 
-    if (!firstName || !lastName || !color) {
+    if (!firstName || !lastName) {
       return res.status(400).json({ error: "All fields are required" });
     }
 
     const userData = await User.findByIdAndUpdate(
       userId,
-      { firstName, lastName, color },
+      { firstName, lastName, color, profileSetup: true },
       { new: true, runValidators: true }
     );
 
@@ -144,6 +145,57 @@ export const updateProfile = async (req, res) => {
         color: userData.color,
       },
     });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({ error: error.message });
+  }
+};
+
+export const addProfileImage = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: "File is required" });
+    }
+
+    const date = Date.now();
+    let fileName = "uploads/profiles/" + date + req.file.originalname;
+
+    renameSync(req.file.path, fileName);
+
+    const updatedUser = await User.findByIdAndUpdate(
+      req.userId,
+      { image: fileName },
+      { new: true, runValidators: true }
+    );
+
+    return res.status(200).json({
+      user: {
+        image: updatedUser.image,
+      },
+    });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({ error: error.message });
+  }
+};
+
+export const removeProfileImage = async (req, res) => {
+  try {
+    const { userId } = req;
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    if (user.image) {
+      unlinkSync(user.image);
+    }
+
+    user.image = null;
+    await user.save();
+
+    return res.status(200).json({ msg: "Profile image removed successfully" });
   } catch (error) {
     console.log(error);
     return res.status(500).json({ error: error.message });
